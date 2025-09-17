@@ -1,40 +1,62 @@
 <!doctype html>
 <html lang="cs">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-    <title>Scotland Yard – Lite</title>
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="manifest" href="manifest.webmanifest">
-    <meta name="theme-color" content="#111111">
-    <link rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512.png">
-    <link rel="stylesheet" href="styles.css">
-  </head>
-  <body>
-    <header class="topbar">
-      <div class="brand">🕵️ Scotland Yard • Lite</div>
-      <div class="controls">
-        <label class="file"><input id="fileJson" type="file" accept=".json"><span>Načíst JSON…</span></label>
-        <label class="file"><input id="fileImg"  type="file" accept="image/*"><span>Načíst mapu…</span></label>
-        <button id="toggleEdges">Hrany</button>
-        <button id="toggleNodes">Uzly</button>
-        <button id="toggleLabels">Čísla</button>
-      </div>
-    </header>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Scotland Yard – Mister X</title>
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#111111">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">🕵️ Scotland Yard • Mister X</div>
+    <div class="controls">
+      <button id="fit">Fit</button>
+      <button id="zoomOut">−</button>
+      <button id="zoomIn">+</button>
+      <button id="toggleEdges">Hrany</button>
+      <button id="toggleNodes">Uzly</button>
+      <button id="toggleLabels">Čísla</button>
+    </div>
+  </header>
 
-    <main>
-      <canvas id="board" tabindex="0" aria-label="Scotland Yard Board"></canvas>
-      <div class="zoombar">
-        <button id="fit">Fit</button>
-        <button id="zoomOut">−</button>
-        <button id="zoomIn">+</button>
+  <main>
+    <canvas id="board" tabindex="0"></canvas>
+    <aside id="panel">
+      <h3>Mr X – záznam tahu</h3>
+      <div class="row">
+        <label>Jízdenka:
+          <select id="mrxTicket">
+            <option value="taxi">Taxi</option>
+            <option value="bus">Bus</option>
+            <option value="metro">Metro</option>
+            <option value="black">Black</option>
+          </select>
+        </label>
+        <label>Cíl (uzel): <input id="mrxDest" type="number" min="1"></label>
+        <label><input id="mrxDouble" type="checkbox"> Dvojitý tah</label>
+        <button id="mrxCommit">Zapsat</button>
       </div>
-    </main>
+      <div class="tickets" id="mrxTicketsLeft"></div>
+      <details>
+        <summary>Pravidla</summary>
+        <ul>
+          <li>Odhalení pozice po <strong>3., 8., 13., 18., 24.</strong> tahu.</li>
+          <li>Mr X: <strong>5× Black</strong>, <strong>2× Double</strong>.</li>
+        </ul>
+      </details>
+      <h3>Log</h3>
+      <div id="log"></div>
+    </aside>
+  </main>
 
-    <footer class="footer"><span>Tip: dvojklik přiblíží na nejbližší uzel. Přidat na plochu → funguje offline.</span></footer>
-    <script src="app.js?v=lite1"></script>
-  </body>
+  <footer class="footer"><span>Dvojklik přiblíží na uzel. Funguje offline po přidání na plochu.</span></footer>
+  <script src="app.js"></script>
+</body>
 </html>
