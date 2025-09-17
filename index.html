@@ -1,0 +1,99 @@
+<!doctype html><html lang="cs"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Scotland Yard – Board Viewer</title>
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#111111">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Scotland Yard"><link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512.png">
+<link rel="stylesheet" href="styles.css"></head><body>
+<header class="topbar"><div class="brand">🕵️ Scotland Yard • Board Viewer</div>
+<div class="controls"><label class="file"><input id="fileJson" type="file" accept=".json" /><span>Načíst JSON…</span></label>
+<label class="file"><input id="fileImg" type="file" accept="image/*" /><span>Načíst mapu…</span></label>
+<button id="reset">Reset pohledu</button><button id="toggleEdges">Zobrazit/skrýt hrany</button>
+<button id="toggleNodes">Zobrazit/skrýt uzly</button><button id="toggleLabels">Zobrazit/skrýt čísla</button></div></header>
+<main><canvas id="board" tabindex="0" aria-label="Scotland Yard Board"></canvas>
+<aside id="sidebar"><h2>Detail uzlu</h2><div id="nodeDetails">Klepni na uzel…</div>
+<div class="legend"><h3>Legenda</h3><div><span class="key taxi"></span>Taxík</div><div><span class="key bus"></span>Autobus</div><div><span class="key metro"></span>Metro</div></div>
+<details><summary>Tipy</summary><ul><li>Štípnutí = zoom, tažení = posun.</li><li>Kolečko myši = zoom, dvojklik = zaměřit.</li><li>Klepni na uzel pro zvýraznění sousedů.</li></ul></details>
+
+      <section id="gamePanel">
+        <div class="modes">
+          <label><input type="radio" name="mode" value="mrX" checked> Režim Mister X</label>
+          <label><input type="radio" name="mode" value="detectives"> Režim Detektivové</label>
+        </div>
+        <div class="row">
+          <label>Aktivní hráč:
+            <select id="activeDetective">
+              <option value="D1">Detektiv 1</option>
+              <option value="D2">Detektiv 2</option>
+              <option value="D3">Detektiv 3</option>
+              <option value="D4">Detektiv 4</option>
+              <option value="D5">Detektiv 5</option>
+            </select>
+          </label>
+          <label><input type="checkbox" id="usePolice1"> Police 1</label>
+          <label><input type="checkbox" id="usePolice2"> Police 2</label>
+        </div>
+        <div class="row">
+          <label>Dílčí krok/stack: <input id="turnIndex" type="number" min="1" value="1" style="width:80px"></label>
+          <button id="prevTurn">◀</button>
+          <button id="nextTurn">▶</button>
+          <button id="exportLog">Export hry</button>
+          <label class="file">
+            <input id="importLog" type="file" accept="application/json" />
+            <span>Import hry…</span>
+          </label>
+        </div>
+
+        <div id="mrXControls">
+          <h3>Táh Mister X</h3>
+          <div class="row">
+            <label>Jízdenka:
+              <select id="mrxTicket">
+                <option value="taxi">Taxi</option>
+                <option value="bus">Bus</option>
+                <option value="metro">Metro</option>
+                <option value="black">Black</option>
+              </select>
+            </label>
+            <label>Cíl (číslo uzlu): <input id="mrxDest" type="number" min="1"></label>
+            <label><input id="mrxDouble" type="checkbox"> Dvojitý tah</label>
+            <button id="mrxCommit">Zapsat</button>
+          </div>
+          <div id="mrxTicketsLeft"></div>
+        </div>
+
+        <div id="detControls" style="display:none">
+          <h3>Táh detektiva</h3>
+          <div class="row">
+            <label>Jízdenka:
+              <select id="detTicket">
+                <option value="taxi">Taxi</option>
+                <option value="bus">Bus</option>
+                <option value="metro">Metro</option>
+              </select>
+            </label>
+            <label>Cíl (číslo uzlu): <input id="detDest" type="number" min="1"></label>
+            <button id="detCommit">Zapsat</button>
+          </div>
+          <div id="detTicketsLeft"></div>
+        </div>
+
+        <details open>
+          <summary>Pravidla & kontroly</summary>
+          <ul>
+            <li>Max 22 kol. Odhalení Mister X po <strong>3., 8., 13., 18. a 24.</strong> tahu.</li>
+            <li>Jízdenky na hráče: detektiv <strong>11 taxi, 8 bus, 4 metro</strong>. Mister X: <strong>5 black</strong>, <strong>2× double</strong> (volitelně 3).</li>
+            <li>Detektivové/Police nesmí sdílet stejnou stanici. Mister X nesmí vstoupit na obsazenou stanici.</li>
+            <li>Black = taxi/bus/metro/ferry (jen Mister X).</li>
+          </ul>
+        </details>
+
+        <h3>Záznam hry</h3>
+        <div id="log"></div>
+      </section>
+    </aside></main>
+
+<footer class="footer"><span>Funguju offline. Otevři přes GitHub Pages, přidej na plochu iPadu a hraj!</span></footer>
+<script src="app.js"></script><script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js'));}</script>
+</body></html>
