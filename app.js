@@ -49,8 +49,8 @@ function nearestNode(x,y,max=40){let best=null,bd=1e9; for(const n of state.grap
 function focusOn(n){const r=canvas.getBoundingClientRect(); const s=Math.min(5,Math.max(1.6,Math.min(r.width,r.height)/260)); state.scale=s; state.panX=r.width/2-n.x*s; state.panY=r.height/2-n.y*s; draw();}
 
 // drawing helpers
-const colFor = (t)=> t==='taxi' ? '#FFD54A' : t==='bus' ? '#4CD964' : t==='metro' ? '#FF3B30' : '#9CA3AF';
-const offsetFor = (t)=> t==='taxi' ? -3 : t==='metro' ? 3 : 0; // bus center
+const colFor = (t)=> t==='taxi' ? '#FFD54A' : t==='bus' ? '#4CD964' : t==='metro' ? '#FF3B30' : t==='lod' ? '#4DA3FF' : '#9CA3AF';
+const offsetFor = (t)=> t==='taxi' ? -4 : t==='metro' ? 4 : 0; // bus center
 const isDashed = (t)=> t==='black';
 function drawArrow(x, y, angle, size){
   ctx.save(); ctx.translate(x,y); ctx.rotate(angle);
@@ -68,12 +68,15 @@ const RULES={reveal:[3,8,13,18,24], black:5, double:2};
 const game={moves:[]};
 function refreshTickets(){document.getElementById('mrxTicketsLeft').textContent=`Zbývá: Black ${RULES.black}, Double ${RULES.double}`;}
 function addLog(m,c=''){const d=document.createElement('div');d.className='entry '+c; d.innerHTML=m; document.getElementById('log').prepend(d);}
-function edgeExists(a,b,type){
+function edgeExistsTyped(a,b,ptype){
   a=String(a); b=String(b);
   return state.graph.edges.some(e=>{
     const f=String(e.from),t=String(e.to),tt=String(e.type).toLowerCase();
-    return (((f===a&&t===b)||(f===b&&t===a)) && (tt===type || (type==='black'&&(tt==='taxi'||tt==='bus'||tt==='metro'||tt==='ferry'))));
+    return (((f===a&&t===b)||(f===b&&t===a)) && tt===ptype);
   });
+}
+function edgeExistsAny(a,b){
+  return edgeExistsTyped(a,b,'taxi')||edgeExistsTyped(a,b,'bus')||edgeExistsTyped(a,b,'metro')||edgeExistsTyped(a,b,'lod');
 }
 
 document.getElementById('mrxCommit').onclick=()=>{
@@ -82,7 +85,13 @@ document.getElementById('mrxCommit').onclick=()=>{
   const dbl=document.getElementById('mrxDouble').checked;
   if(Number.isNaN(to)){addLog('Zadej cílový uzel.','err');return;}
   const last=game.moves.length?game.moves[game.moves.length-1].to:null;
-  if(last && ticket!=='black' && !edgeExists(last,to,ticket)){addLog(`Neplatná hrana ${last} → ${to} pro ${ticket}.`,'err');return;}
+  if(last){
+    if(ticket==='black'){
+      if(!edgeExistsAny(last,to)){ addLog(`Black: musí existovat spojení (taxi/bus/metro/lod) mezi ${last} → ${to}.`,'err'); return; }
+    } else {
+      if(!edgeExistsTyped(last,to,ticket)){ addLog(`Neplatná hrana ${last} → ${to} pro ${ticket}.`,'err'); return; }
+    }
+  }
   if(ticket==='black'){ if(RULES.black<=0){addLog('Došly Black.','err');return;} RULES.black--; }
   game.moves.push({ticket,to});
 
@@ -92,7 +101,11 @@ document.getElementById('mrxCommit').onclick=()=>{
     const to2=parseInt(prompt('Druhý cíl:')||'',10);
     const t2=(prompt('Druhá jízdenka (taxi/bus/metro/black):','taxi')||'').toLowerCase();
     if(!to2 || !['taxi','bus','metro','black'].includes(t2)){addLog('Neplatný druhý tah.','err');return;}
-    if(t2!=='black' && !edgeExists(to,to2,t2)){addLog('Neplatná druhá hrana.','err');return;}
+    if(t2==='black'){
+      if(!edgeExistsAny(to,to2)){ addLog('Black: Druhý tah nemá platné spojení.','err'); return; }
+    } else {
+      if(!edgeExistsTyped(to,to2,t2)){ addLog('Neplatná druhá hrana.','err'); return; }
+    }
     if(t2==='black'){ if(RULES.black<=0){addLog('Došly Black pro 2. tah.','err');return;} RULES.black--; }
     game.moves.push({ticket:t2,to:to2});
   }
@@ -124,7 +137,7 @@ function draw(){
     ctx.strokeStyle=col; ctx.lineWidth=5; ctx.lineCap='round'; ctx.setLineDash(isDashed(s.type)?[12,8]:[]);
     ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke(); ctx.setLineDash([]);
     // arrow
-    const t=0.6, mx=ax+(bx-ax)*t, my=ay+(by-ay)*t; ctx.fillStyle=col; drawArrow(mx,my,Math.atan2(by-ay,bx-ax),8);
+    const t=0.6, mx=ax+(bx-ax)*t, my=ay+(by-ay)*t; ctx.fillStyle=col; drawArrow(mx,my,Math.atan2(by-ay,bx-ax),24);
   }
   // Last highlighted
   if(segs.length){
@@ -135,7 +148,7 @@ function draw(){
       const col=colFor(s.type);
       ctx.strokeStyle=col; ctx.lineWidth=7; ctx.lineCap='round'; ctx.shadowColor=col; ctx.shadowBlur=8; ctx.setLineDash(isDashed(s.type)?[12,8]:[]);
       ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke(); ctx.setLineDash([]); ctx.shadowBlur=0;
-      const t=0.6, mx=ax+(bx-ax)*t, my=ay+(by-ay)*t; ctx.fillStyle=col; drawArrow(mx,my,Math.atan2(by-ay,bx-ax),10);
+      const t=0.6, mx=ax+(bx-ax)*t, my=ay+(by-ay)*t; ctx.fillStyle=col; drawArrow(mx,my,Math.atan2(by-ay,bx-ax),30);
     }
   }
 
