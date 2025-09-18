@@ -68,6 +68,9 @@ const RULES={reveal:[3,8,13,18,24], black:5, double:2};
 const game={moves:[]};
 // commitStack stores turns for undo: {moves:[{ticket,to}, ...], usedBlack:number, usedDouble:number}
 const commitStack=[];
+// Track manual gains (+1 buttons) until next commit
+let ACCRUED = {black:0, double:0};
+
 
 function refreshTickets(){document.getElementById('mrxTicketsLeft').textContent=`Zbývá: Black ${RULES.black}, Double ${RULES.double}`;}
 function addLog(m,c=''){const d=document.createElement('div');d.className='entry '+c; d.innerHTML=m; document.getElementById('log').prepend(d);}
@@ -126,7 +129,8 @@ document.getElementById('mrxCommit').onclick=()=>{
 
   // Commit turn
   for(const m of movesTurn) game.moves.push(m);
-  commitStack.push({moves:movesTurn, usedBlack, usedDouble});
+  commitStack.push({moves:movesTurn, usedBlack, usedDouble, gainedBlack:ACCRUED.black, gainedDouble:ACCRUED.double});
+  ACCRUED.black=0; ACCRUED.double=0;
 
   const c=game.moves.length;
   if(RULES.reveal.includes(c)){ addLog(`Odhalení po ${c}. tahu: <strong>${game.moves[c-1].to}</strong>`,'ok'); }
@@ -152,10 +156,17 @@ function draw(){
     if(!a||!b) continue;
     const {ax,ay,bx,by}=segPoints(a,b,s.type);
     const col=colFor(s.type);
-    ctx.strokeStyle=col; ctx.lineWidth=5; ctx.lineCap='round'; ctx.setLineDash(isDashed(s.type)?[12,8]:[]);
+    /* outline */
+    ctx.lineCap='round'; ctx.setLineDash([]);
+    ctx.strokeStyle = (s.type==='black') ? '#FFFFFF' : '#000000';
+    ctx.lineWidth = 7; // 5px color + ~1px outline each side
+    ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
+    /* color */
+    ctx.strokeStyle=col; ctx.lineWidth=5; ctx.setLineDash(isDashed(s.type)?[12,8]:[]);
     ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke(); ctx.setLineDash([]);
     // arrow
-    const t=0.6, mx=ax+(bx-ax)*t, my=ay+(by-ay)*t; ctx.fillStyle=col; drawArrow(mx,my,Math.atan2(by-ay,bx-ax),24);
+    const t=0.6, mx=ax+(bx-ax)*t, my=ay+(by-ay)*t; ctx.fillStyle=(s.type==='black')?'#FFFFFF':'#000000'; drawArrow(mx,my,Math.atan2(by-ay,bx-ax),26);
+    ctx.fillStyle=col; drawArrow(mx,my,Math.atan2(by-ay,bx-ax),24);
   }
   // Last highlighted
   if(segs.length){
@@ -164,9 +175,16 @@ function draw(){
     if(a&&b){
       const {ax,ay,bx,by}=segPoints(a,b,s.type);
       const col=colFor(s.type);
-      ctx.strokeStyle=col; ctx.lineWidth=7; ctx.lineCap='round'; ctx.shadowColor=col; ctx.shadowBlur=8; ctx.setLineDash(isDashed(s.type)?[12,8]:[]);
+      /* outline */
+      ctx.lineCap='round'; ctx.setLineDash([]);
+      ctx.strokeStyle = (s.type==='black') ? '#FFFFFF' : '#000000';
+      ctx.lineWidth = 9;
+      ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
+      /* color */
+      ctx.strokeStyle=col; ctx.lineWidth=7; ctx.shadowColor=col; ctx.shadowBlur=8; ctx.setLineDash(isDashed(s.type)?[12,8]:[]);
       ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke(); ctx.setLineDash([]); ctx.shadowBlur=0;
-      const t=0.6, mx=ax+(bx-ax)*t, my=ay+(by-ay)*t; ctx.fillStyle=col; drawArrow(mx,my,Math.atan2(by-ay,bx-ax),30);
+      const t=0.6, mx=ax+(bx-ax)*t, my=ay+(by-ay)*t; ctx.fillStyle=(s.type==='black')?'#FFFFFF':'#000000'; drawArrow(mx,my,Math.atan2(by-ay,bx-ax),32);
+      ctx.fillStyle=col; drawArrow(mx,my,Math.atan2(by-ay,bx-ax),30);
     }
   }
 
@@ -193,17 +211,21 @@ function draw(){
 }
 
 // Extra controls
-document.getElementById('btnAddBlack').onclick=()=>{ RULES.black++; refreshTickets(); addLog('+1 Black přidán','ok'); };
-document.getElementById('btnAddDouble').onclick=()=>{ RULES.double++; refreshTickets(); addLog('+1 Double přidán','ok'); };
+document.getElementById('btnAddBlack').onclick=()=>{ RULES.black++; ACCRUED.black++; refreshTickets(); addLog('+1 Black přidán','ok'); };
+document.getElementById('btnAddDouble').onclick=()=>{ RULES.double++; ACCRUED.double++; refreshTickets(); addLog('+1 Double přidán','ok'); };
 document.getElementById('btnUndo').onclick=()=>{
   if(!commitStack.length){ addLog('Není co vracet.','err'); return; }
   const lastTurn = commitStack.pop();
   // remove moves
   for(let i=0;i<lastTurn.moves.length;i++){ game.moves.pop(); }
-  // refund tickets
+  // refund tickets spent
   RULES.black += lastTurn.usedBlack||0;
   RULES.double += lastTurn.usedDouble||0;
+  // remove tickets gained during that turn
+  RULES.black -= lastTurn.gainedBlack||0;
+  RULES.double -= lastTurn.gainedDouble||0;
+  if(RULES.black<0) RULES.black=0; if(RULES.double<0) RULES.double=0;
   refreshTickets();
   draw();
-  addLog('Poslední tah vrácen.','ok');
+  addLog('Poslední tah vrácen (včetně získaných jízdenek).','ok');
 };
