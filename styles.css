@@ -8,3 +8,6 @@ main{display:grid;grid-template-columns:1fr 320px;height:calc(100% - 50px)}
 .row{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}
 #log{max-height:60vh;overflow:auto;display:grid;gap:6px}
 #log .entry{padding:6px 8px;background:#11161d;border:1px solid #1f2a36;border-radius:8px}
+
+#panel button{background:#1b2430;color:#eaeff4;border:1px solid #273141;border-radius:8px;padding:8px 12px;cursor:pointer}
+#panel button:hover{background:#222c3a}
