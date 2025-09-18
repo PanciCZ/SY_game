@@ -1,34 +1,36 @@
-// SY Mr X v18 – fixes + features
+// v18f – robust assets + tabs + thicker lines + safe-area
 const REVEAL_STEPS=[3,8,13,18,24];
 
-// ---------- Tabs & basic state ----------
+// Tabs
 const tabs=document.querySelectorAll('.tab');
 const views={map:document.getElementById('view-map'), mrx:document.getElementById('view-mrx'), players:document.getElementById('view-players')};
 let CURRENT_TAB='map';
-let SHOW_X_PATHS=true;       // trasy Mr.X
-let SHOW_DET_PATHS=false;    // trasy detektivů
-tabs.forEach(t=>t.addEventListener('click',()=>switchTab(t.dataset.tab)));
+tabs.forEach(t=>t.addEventListener('click',()=>{CURRENT_TAB=t.dataset.tab; tabs.forEach(x=>x.classList.toggle('active',x===t)); Object.entries(views).forEach(([k,el])=>el.classList.toggle('active',k===CURRENT_TAB)); if(CURRENT_TAB==='mrx') renderMrXCards(); if(CURRENT_TAB==='players') renderPlayersTable(); }));
 
-function switchTab(to){
-  CURRENT_TAB=to;
-  tabs.forEach(t=>t.classList.toggle('active', t.dataset.tab===to));
-  Object.entries(views).forEach(([k,el])=>el.classList.toggle('active', k===to));
-  if(to==='map') fit();
-  if(to==='mrx') renderMrXCards();
-  if(to==='players') renderPlayersTable();
-}
+// Visibility toggles
+let SHOW_X_PATHS=true, SHOW_DET_PATHS=false;
 document.getElementById('toggleXPaths').addEventListener('click',()=>{SHOW_X_PATHS=!SHOW_X_PATHS; draw();});
 document.getElementById('toggleDetPaths').addEventListener('click',()=>{SHOW_DET_PATHS=!SHOW_DET_PATHS; draw();});
 
-// ---------- Canvas / Map ----------
-const canvas=document.getElementById('board'); const ctx=canvas.getContext('2d',{alpha:false}); canvas.style.touchAction='none';
+// Canvas / Map
+const canvas=document.getElementById('board'); const ctx=canvas.getContext('2d',{alpha:false});
 const state={img:null,graph:{nodes:[],edges:[]}, scale:1,panX:0,panY:0,dpi:window.devicePixelRatio||1, nodeRadius:13, fontPx:28};
 
+function absAsset(p){return new URL(p, new URL('./assets/', location.href)).toString();}
 function loadImage(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src;});}
-async function tryImages(){ try{ return await loadImage('assets/board.webp'); } catch { return loadImage('assets/board.png'); } }
+async function tryImages(){try{return await loadImage(absAsset('board.webp'));}catch{return loadImage(absAsset('board.png'));}}
 function normalize(g){const n=(g.nodes||[]).map(x=>({id:String(x.id??x.node??x.name),x:+x.x,y:+x.y,label:String(x.label??x.id??'')}));const e=(g.edges||g.links||[]).map(x=>({from:String(x.from??x.source),to:String(x.to??x.target),type:String(x.type??x.transport??'').toLowerCase()}));return{nodes:n,edges:e};}
-async function boot(){const [img,graph]=await Promise.all([tryImages(), fetch('assets/sy_nodes_edges.json',{cache:'no-store'}).then(r=>r.json())]); state.img=img; state.graph=normalize(graph); centerAndFit(); fit(); refreshTickets(); draw(); switchTab('map');}
-window.addEventListener('DOMContentLoaded', ()=>boot().catch(console.error));
+async function boot(){
+  try{
+    const [img,graph]=await Promise.all([tryImages(), fetch(absAsset('sy_nodes_edges.json'),{cache:'no-store'}).then(r=>r.json())]);
+    state.img=img; state.graph=normalize(graph);
+  }catch(err){
+    console.error('Asset load error', err);
+    addLog('Nepodařilo se načíst mapu/JSON. Zkontroluj složku <code>/assets</code>.','err');
+  }
+  centerAndFit(); fit(); draw(); refreshTickets();
+}
+window.addEventListener('DOMContentLoaded', ()=>boot());
 
 function fit(){const r=canvas.getBoundingClientRect(),d=state.dpi;const w=Math.max(1,Math.floor(r.width*d)),h=Math.max(1,Math.floor(r.height*d)); if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;} draw();}
 window.addEventListener('resize',fit);
@@ -67,16 +69,15 @@ const colFor=(t)=>t==='taxi'?'#FFD54A':t==='bus'?'#4CD964':t==='metro'?'#FF3B30'
 const offsetFor=(t)=>t==='taxi'?-4:t==='metro'?4:0;
 const isDashed=(t)=>t==='black';
 function drawArrow(x,y,ang,size,outline=null){ if(outline){ctx.fillStyle=outline;ctx.save();ctx.translate(x,y);ctx.rotate(ang);ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-size,size*0.6);ctx.lineTo(-size,-size*0.6);ctx.closePath();ctx.fill();ctx.restore();} ctx.save();ctx.translate(x,y);ctx.rotate(ang);ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-size*0.9, size*0.54);ctx.lineTo(-size*0.9,-size*0.54);ctx.closePath();ctx.fill();ctx.restore();}
-function segPoints(a,b,type){const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;const px=-dy/len,py=dx/len;const off=offsetFor(type);return{ax:a.x+px*off,ay:a.y+py*off,bx:b.x+px*off,by:b.y+py*off};}
+function segPoints(a,b,type){const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;const px=-dy/len,py=dx/len;const off=offsetFor(type);return{ax:a.x+px*off,ay=a.y+py*off,bx=b.x+px*off,by=b.y+py*off};}
 
-// ---------- Game / rules / logging ----------
+// Rules & log
 const RULES={reveal:[3,8,13,18,24], black:5, double:2};
 const game={moves:[]};
-const commitStack=[]; // {moves:[{ticket,to}], usedBlack, usedDouble, gainedBlack, gainedDouble}
-let ACCRUED={black:0,double:0};
+const commitStack=[]; let ACCRUED={black:0,double:0};
 
-function refreshTickets(){const box=document.getElementById('mrxTicketsLeft'); if(box) box.textContent=`Zbývá: Black ${RULES.black}, Double ${RULES.double}`;}
-function addLog(m,c=''){const d=document.createElement('div');d.className='entry '+c; d.innerHTML=m; document.getElementById('log').prepend(d);}
+function refreshTickets(){const el=document.getElementById('mrxTicketsLeft'); if(el) el.textContent=`Zbývá: Black ${RULES.black}, Double ${RULES.double}`;}
+function addLog(m,c=''){const d=document.createElement('div');d.className='entry '+c; d.innerHTML=m; const log=document.getElementById('log'); if(log) log.prepend(d);}
 function edgeExistsTyped(a,b,ptype){a=String(a);b=String(b);return state.graph.edges.some(e=>{const f=String(e.from),t=String(e.to),tt=String(e.type).toLowerCase();return (((f===a&&t===b)||(f===b&&t===a)) && tt===ptype);});}
 function edgeExistsAny(a,b){return edgeExistsTyped(a,b,'taxi')||edgeExistsTyped(a,b,'bus')||edgeExistsTyped(a,b,'metro')||edgeExistsTyped(a,b,'lod');}
 
@@ -135,50 +136,42 @@ document.getElementById('btnUndo').onclick=()=>{
   addLog('Poslední tah vrácen (včetně získaných jízdenek).','ok');
 };
 
-// ---------- Drawing ----------
+// Drawing (thicker lines)
 function draw(){
   const d=state.dpi; ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle='#0b0f14'; ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.save(); ctx.scale(d,d); ctx.translate(state.panX,state.panY); ctx.scale(state.scale,state.scale);
   if(state.img) ctx.drawImage(state.img,0,0);
 
-  // Build segments from moves
   const segs=[]; for(let i=1;i<game.moves.length;i++){ const a=game.moves[i-1], b=game.moves[i]; segs.push({from:String(a.to), to:String(b.to), type:String(b.ticket).toLowerCase(), idx:i}); }
 
   if(SHOW_X_PATHS){
-    // draw non-last
     for(const s of segs.slice(0,-1)){
       const A=state.graph.nodes.find(n=>n.id===s.from), B=state.graph.nodes.find(n=>n.id===s.to); if(!A||!B) continue;
       const {ax,ay,bx,by}=segPoints(A,B,s.type); const col=colFor(s.type);
-      // outline
-      ctx.lineCap='round'; ctx.setLineDash([]); ctx.strokeStyle=(s.type==='black')?'#FFFFFF':'#000000'; ctx.lineWidth=11;
+      ctx.lineCap='round'; ctx.setLineDash([]); ctx.strokeStyle=(s.type==='black')?'#FFFFFF':'#000000'; ctx.lineWidth=34-6;
       ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
-      // color
-      ctx.strokeStyle=col; ctx.lineWidth=9; ctx.setLineDash(isDashed(s.type)?[12,8]:[]);
+      ctx.strokeStyle=col; ctx.lineWidth=30-6; ctx.setLineDash(isDashed(s.type)?[12,8]:[]);
       ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke(); ctx.setLineDash([]);
-      // arrow
       const t=0.6, mx=ax+(bx-ax)*t, my=ay+(by-ay)*t;
-      drawArrow(mx,my,Math.atan2(by-ay,bx-ax),30,(s.type==='black')?'#FFFFFF':'#000000');
-      ctx.fillStyle=col; drawArrow(mx,my,Math.atan2(by-ay,bx-ax),28,null);
+      drawArrow(mx,my,Math.atan2(by-ay,bx-ax),52-8,(s.type==='black')?'#FFFFFF':'#000000');
+      ctx.fillStyle=col; drawArrow(mx,my,Math.atan2(by-ay,bx-ax),48-8,null);
     }
-    // last highlighted
     if(segs.length){
       const s=segs[segs.length-1]; const A=state.graph.nodes.find(n=>n.id===s.from), B=state.graph.nodes.find(n=>n.id===s.to);
       if(A&&B){
         const {ax,ay,bx,by}=segPoints(A,B,s.type); const col=colFor(s.type);
-        ctx.lineCap='round'; ctx.setLineDash([]); ctx.strokeStyle=(s.type==='black')?'#FFFFFF':'#000000'; ctx.lineWidth=13;
+        ctx.lineCap='round'; ctx.setLineDash([]); ctx.strokeStyle=(s.type==='black')?'#FFFFFF':'#000000'; ctx.lineWidth=34;
         ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
-        ctx.strokeStyle=col; ctx.lineWidth=11; ctx.shadowColor=col; ctx.shadowBlur=8; ctx.setLineDash(isDashed(s.type)?[12,8]:[]);
+        ctx.strokeStyle=col; ctx.lineWidth=30; ctx.shadowColor=col; ctx.shadowBlur=8; ctx.setLineDash(isDashed(s.type)?[12,8]:[]);
         ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke(); ctx.setLineDash([]); ctx.shadowBlur=0;
         const t=0.6, mx=ax+(bx-ax)*t, my=ay+(by-ay)*t;
-        drawArrow(mx,my,Math.atan2(by-ay,bx-ax),36,(s.type==='black')?'#FFFFFF':'#000000');
-        ctx.fillStyle=col; drawArrow(mx,my,Math.atan2(by-ay,bx-ax),34,null);
+        drawArrow(mx,my,Math.atan2(by-ay,bx-ax),52,(s.type==='black')?'#FFFFFF':'#000000');
+        ctx.fillStyle=col; drawArrow(mx,my,Math.atan2(by-ay,bx-ax),48,null);
       }
     }
   }
 
-  // Detectives paths
-  const DETECTIVE_IDS=['D1','D2','D3','D4','D5','D6'];
-  if(SHOW_DET_PATHS && window.playersState){
+  if(SHOW_DET_PATHS){
     const COLORS = {D1:'#60A5FA', D2:'#A78BFA', D3:'#34D399', D4:'#FBBF24', D5:'#F87171', D6:'#EC4899'};
     for(const id of DETECTIVE_IDS){
       const col = COLORS[id] || '#9CA3AF';
@@ -189,9 +182,9 @@ function draw(){
           const B = state.graph.nodes.find(n=>n.id===String(b));
           if(!A||!B) continue;
           ctx.lineCap='round'; ctx.setLineDash([]);
-          ctx.strokeStyle='#000000'; ctx.lineWidth=7;
+          ctx.strokeStyle='#000000'; ctx.lineWidth=22;
           ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.stroke();
-          ctx.strokeStyle=col; ctx.lineWidth=5;
+          ctx.strokeStyle=col; ctx.lineWidth=20;
           ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.stroke();
         }
       }
@@ -215,7 +208,7 @@ function draw(){
   ctx.restore();
 }
 
-// ---------- Mr.X cards (3 columns; double = two lines) ----------
+// Mr.X cards + Players table (same as v18)
 function renderMrXCards(){
   const list=document.getElementById('mrxCards'); if(!list) return;
   list.innerHTML='';
@@ -234,7 +227,6 @@ function renderMrXCards(){
   for(;step<=24;step++){ const li=document.createElement('li'); li.className='mrx-card'; li.innerHTML=`<span class="mrx-step">${step}.</span>`; list.appendChild(li); }
 }
 
-// ---------- Players table ----------
 const DETECTIVE_IDS=['D1','D2','D3','D4','D5','D6'];
 if(!window.playersState){ window.playersState=Object.fromEntries(DETECTIVE_IDS.map(id=>[id, Array(25).fill(null)])); }
 function renderPlayersTable(){
