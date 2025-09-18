@@ -1,4 +1,4 @@
-// SY Mr X v16 full – tabs + thick map edges + MrX cards 3 cols + players table + det paths/validation
+// SY Mr X v18 – fixes + features
 const REVEAL_STEPS=[3,8,13,18,24];
 
 // ---------- Tabs & basic state ----------
@@ -8,7 +8,6 @@ let CURRENT_TAB='map';
 let SHOW_X_PATHS=true;       // trasy Mr.X
 let SHOW_DET_PATHS=false;    // trasy detektivů
 tabs.forEach(t=>t.addEventListener('click',()=>switchTab(t.dataset.tab)));
-document.querySelector('.tab[data-tab=\"map\"]').classList.add('active');
 
 function switchTab(to){
   CURRENT_TAB=to;
@@ -26,9 +25,9 @@ const canvas=document.getElementById('board'); const ctx=canvas.getContext('2d',
 const state={img:null,graph:{nodes:[],edges:[]}, scale:1,panX:0,panY:0,dpi:window.devicePixelRatio||1, nodeRadius:13, fontPx:28};
 
 function loadImage(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src;});}
-async function tryImages(){try{return await loadImage('assets/board.webp');}catch{return loadImage('assets/board.png');}}
+async function tryImages(){ try{ return await loadImage('assets/board.webp'); } catch { return loadImage('assets/board.png'); } }
 function normalize(g){const n=(g.nodes||[]).map(x=>({id:String(x.id??x.node??x.name),x:+x.x,y:+x.y,label:String(x.label??x.id??'')}));const e=(g.edges||g.links||[]).map(x=>({from:String(x.from??x.source),to:String(x.to??x.target),type:String(x.type??x.transport??'').toLowerCase()}));return{nodes:n,edges:e};}
-async function boot(){const [img,graph]=await Promise.all([tryImages(), fetch('assets/sy_nodes_edges.json').then(r=>r.json())]); state.img=img; state.graph=normalize(graph); centerAndFit(); fit(); draw(); refreshTickets();}
+async function boot(){const [img,graph]=await Promise.all([tryImages(), fetch('assets/sy_nodes_edges.json',{cache:'no-store'}).then(r=>r.json())]); state.img=img; state.graph=normalize(graph); centerAndFit(); fit(); refreshTickets(); draw(); switchTab('map');}
 window.addEventListener('DOMContentLoaded', ()=>boot().catch(console.error));
 
 function fit(){const r=canvas.getBoundingClientRect(),d=state.dpi;const w=Math.max(1,Math.floor(r.width*d)),h=Math.max(1,Math.floor(r.height*d)); if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;} draw();}
@@ -47,7 +46,7 @@ canvas.addEventListener('pointerup',e=>{canvas.releasePointerCapture(e.pointerId
 canvas.addEventListener('pointercancel',e=>{pts.delete(e.pointerId);if(pts.size<2)pinch=null;});
 canvas.addEventListener('pointermove',e=>{
   if(!pts.has(e.pointerId))return;
-  const prev=pts.get(e.pointerId),cur={x:e.clientX,y=e.clientY};pts.set(e.pointerId,cur);
+  const prev=pts.get(e.pointerId),cur={x:e.clientX,y:e.clientY};pts.set(e.pointerId,cur);
   const arr=[...pts.values()];
   if(arr.length===1){state.panX+=cur.x-prev.x;state.panY+=cur.y-prev.y;draw();return;}
   if(arr.length===2){
@@ -68,7 +67,7 @@ const colFor=(t)=>t==='taxi'?'#FFD54A':t==='bus'?'#4CD964':t==='metro'?'#FF3B30'
 const offsetFor=(t)=>t==='taxi'?-4:t==='metro'?4:0;
 const isDashed=(t)=>t==='black';
 function drawArrow(x,y,ang,size,outline=null){ if(outline){ctx.fillStyle=outline;ctx.save();ctx.translate(x,y);ctx.rotate(ang);ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-size,size*0.6);ctx.lineTo(-size,-size*0.6);ctx.closePath();ctx.fill();ctx.restore();} ctx.save();ctx.translate(x,y);ctx.rotate(ang);ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-size*0.9, size*0.54);ctx.lineTo(-size*0.9,-size*0.54);ctx.closePath();ctx.fill();ctx.restore();}
-function segPoints(a,b,type){const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;const px=-dy/len,py=dx/len;const off=offsetFor(type);return{ax:a.x+px*off,ay:a.y+py*off,bx=b.x+px*off,by=b.y+py*off};}
+function segPoints(a,b,type){const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;const px=-dy/len,py=dx/len;const off=offsetFor(type);return{ax:a.x+px*off,ay:a.y+py*off,bx:b.x+px*off,by:b.y+py*off};}
 
 // ---------- Game / rules / logging ----------
 const RULES={reveal:[3,8,13,18,24], black:5, double:2};
@@ -76,7 +75,7 @@ const game={moves:[]};
 const commitStack=[]; // {moves:[{ticket,to}], usedBlack, usedDouble, gainedBlack, gainedDouble}
 let ACCRUED={black:0,double:0};
 
-function refreshTickets(){document.getElementById('mrxTicketsLeft').textContent=`Zbývá: Black ${RULES.black}, Double ${RULES.double}`;}
+function refreshTickets(){const box=document.getElementById('mrxTicketsLeft'); if(box) box.textContent=`Zbývá: Black ${RULES.black}, Double ${RULES.double}`;}
 function addLog(m,c=''){const d=document.createElement('div');d.className='entry '+c; d.innerHTML=m; document.getElementById('log').prepend(d);}
 function edgeExistsTyped(a,b,ptype){a=String(a);b=String(b);return state.graph.edges.some(e=>{const f=String(e.from),t=String(e.to),tt=String(e.type).toLowerCase();return (((f===a&&t===b)||(f===b&&t===a)) && tt===ptype);});}
 function edgeExistsAny(a,b){return edgeExistsTyped(a,b,'taxi')||edgeExistsTyped(a,b,'bus')||edgeExistsTyped(a,b,'metro')||edgeExistsTyped(a,b,'lod');}
@@ -178,7 +177,8 @@ function draw(){
   }
 
   // Detectives paths
-  if(SHOW_DET_PATHS){
+  const DETECTIVE_IDS=['D1','D2','D3','D4','D5','D6'];
+  if(SHOW_DET_PATHS && window.playersState){
     const COLORS = {D1:'#60A5FA', D2:'#A78BFA', D3:'#34D399', D4:'#FBBF24', D5:'#F87171', D6:'#EC4899'};
     for(const id of DETECTIVE_IDS){
       const col = COLORS[id] || '#9CA3AF';
