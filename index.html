@@ -1,86 +1,35 @@
 <!doctype html>
 <html lang="cs">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Scotland Yard – Mister X</title>
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#11161d">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512.png">
-  <link rel="stylesheet" href="styles.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scotland Yard – Mr.X</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="topbar">
-    <nav class="tabs">
-      <button class="tab" data-tab="map">Mapa</button>
-      <button class="tab" data-tab="mrx">Mr. X</button>
-      <button class="tab" data-tab="players">Ostatní hráči</button>
-    </nav>
-    <div class="controls">
-      <button id="togglePaths">👁︎ Trasy</button>
-      <button id="fit">Fit</button>
-      <button id="zoomOut">−</button>
-      <button id="zoomIn">+</button>
-    </div>
-  </header>
-
-  <main>
-    <section id="view-map" class="view active">
-      <canvas id="board" tabindex="0"></canvas>
-      <aside id="panel">
-        <h3>Mr X – záznam tahu</h3>
-        <div class="row">
-          <label>Jízdenka:
-            <select id="mrxTicket">
-              <option value="taxi">Taxi</option>
-              <option value="bus">Bus</option>
-              <option value="metro">Metro</option>
-              <option value="black">Black</option>
-            </select>
-          </label>
-          <label>Cíl (uzel): <input id="mrxDest" type="number" min="1"></label>
-          <label><input id="mrxDouble" type="checkbox"> Dvojitý tah</label>
-          <button id="mrxCommit">Zapsat</button>
-        </div>
-        <div class="tickets" id="mrxTicketsLeft"></div>
-        <div class="row">
-          <button id="btnAddBlack">+1 Black</button>
-          <button id="btnAddDouble">+1 Double</button>
-          <button id="btnUndo">Zpět</button>
-        </div>
-        <details>
-          <summary>Pravidla</summary>
-          <ul>
-            <li>Odhalení po <strong>3., 8., 13., 18., 24.</strong> tahu.</li>
-            <li>Mr X: <strong>5× Black</strong>, <strong>2× Double</strong>.</li>
-            <li>Black = skrytí druhu dopravy, ale musí existovat hrana (taxi/bus/metro/lod).</li>
-          </ul>
-        </details>
-        <h3>Log</h3>
-        <div id="log"></div>
-      </aside>
-    </section>
-
-    <section id="view-mrx" class="view">
-      <div class="mrx-log">
-        <h2>Mr. X – cestovní deník</h2>
-        <ol id="mrxCards" class="mrx-cards"></ol>
-      </div>
-    </section>
-
-    <section id="view-players" class="view">
-      <div class="players">
-        <h2>Ostatní hráči</h2>
-        <div id="playersTable" class="players-table"></div>
-      </div>
-    </section>
-  </main>
-
-  <footer class="footer"><span>Tip: 1 prst = posun, 2 prsty = zoom, dvojklik = přiblížení na uzel.</span></footer>
-  <script src="app.js?v=15"></script>
+<header class="topbar">
+<nav class="tabs">
+  <button class="tab" data-tab="map">Mapa</button>
+  <button class="tab" data-tab="mrx">Mr. X</button>
+  <button class="tab" data-tab="players">Ostatní hráči</button>
+</nav>
+<div class="controls">
+  <button id="toggleXPaths">👁︎ Mr.X</button>
+  <button id="toggleDetPaths">👁︎ Detektivové</button>
+</div>
+</header>
+<main>
+<section id="view-map" class="view active">
+  <canvas id="board"></canvas>
+</section>
+<section id="view-mrx" class="view">
+  <ol id="mrxCards" class="mrx-cards"></ol>
+</section>
+<section id="view-players" class="view">
+  <div id="playersTable" class="players-table"></div>
+</section>
+</main>
+<script src="app.js"></script>
 </body>
 </html>
