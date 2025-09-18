@@ -25,7 +25,7 @@ const canvas=document.getElementById('board'); const ctx=canvas.getContext('2d',
 const state={img:null,graph:{nodes:[],edges:[]}, scale:1,panX:0,panY:0,dpi:window.devicePixelRatio||1, nodeRadius:13, fontPx:28};
 
 function loadImage(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src;});}
-async function tryImages(){ try{ return await loadImage('assets/board.webp'); } catch { return loadImage('assets/board.png'); } }
+async function tryImages(){ try{ return await loadImage('assets/board.webp'); } catch { return loadImage('assets/board.jpeg'); } }
 function normalize(g){const n=(g.nodes||[]).map(x=>({id:String(x.id??x.node??x.name),x:+x.x,y:+x.y,label:String(x.label??x.id??'')}));const e=(g.edges||g.links||[]).map(x=>({from:String(x.from??x.source),to:String(x.to??x.target),type:String(x.type??x.transport??'').toLowerCase()}));return{nodes:n,edges:e};}
 async function boot(){const [img,graph]=await Promise.all([tryImages(), fetch('assets/sy_nodes_edges.json',{cache:'no-store'}).then(r=>r.json())]); state.img=img; state.graph=normalize(graph); centerAndFit(); fit(); refreshTickets(); draw(); switchTab('map');}
 window.addEventListener('DOMContentLoaded', ()=>boot().catch(console.error));
@@ -153,7 +153,7 @@ function draw(){
       ctx.lineCap='round'; ctx.setLineDash([]); ctx.strokeStyle=(s.type==='black')?'#FFFFFF':'#000000'; ctx.lineWidth=11;
       ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
       // color
-      ctx.strokeStyle=col; ctx.lineWidth=9; ctx.setLineDash(isDashed(s.type)?[12,8]:[]);
+      ctx.strokeStyle=col; ctx.lineWidth=30; ctx.setLineDash(isDashed(s.type)?[12,8]:[]);
       ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke(); ctx.setLineDash([]);
       // arrow
       const t=0.6, mx=ax+(bx-ax)*t, my=ay+(by-ay)*t;
@@ -189,9 +189,9 @@ function draw(){
           const B = state.graph.nodes.find(n=>n.id===String(b));
           if(!A||!B) continue;
           ctx.lineCap='round'; ctx.setLineDash([]);
-          ctx.strokeStyle='#000000'; ctx.lineWidth=7;
+          ctx.strokeStyle='#000000'; ctx.lineWidth=25;
           ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.stroke();
-          ctx.strokeStyle=col; ctx.lineWidth=5;
+          ctx.strokeStyle=col; ctx.lineWidth=20;
           ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.stroke();
         }
       }
