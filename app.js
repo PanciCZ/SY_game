@@ -153,7 +153,7 @@ function draw(){
       ctx.lineCap='round'; ctx.setLineDash([]); ctx.strokeStyle=(s.type==='black')?'#FFFFFF':'#000000'; ctx.lineWidth=11;
       ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
       // color
-      ctx.strokeStyle=col; ctx.lineWidth=18; ctx.setLineDash(isDashed(s.type)?[12,8]:[]);
+      ctx.strokeStyle=col; ctx.lineWidth=30; ctx.setLineDash(isDashed(s.type)?[12,8]:[]);
       ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke(); ctx.setLineDash([]);
       // arrow
       const t=0.6, mx=ax+(bx-ax)*t, my=ay+(by-ay)*t;
@@ -189,9 +189,9 @@ function draw(){
           const B = state.graph.nodes.find(n=>n.id===String(b));
           if(!A||!B) continue;
           ctx.lineCap='round'; ctx.setLineDash([]);
-          ctx.strokeStyle='#000000'; ctx.lineWidth=14;
+          ctx.strokeStyle='#000000'; ctx.lineWidth=20;
           ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.stroke();
-          ctx.strokeStyle=col; ctx.lineWidth=10;
+          ctx.strokeStyle=col; ctx.lineWidth=14;
           ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.stroke();
         }
       }
