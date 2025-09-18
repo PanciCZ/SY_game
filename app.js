@@ -9,12 +9,29 @@ const canvas=document.getElementById('board'); const ctx=canvas.getContext('2d',
 function loadImage(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src;});}
 async function tryImages(){try{return await loadImage('assets/board.webp');}catch{return loadImage('assets/board.png');}}
 function normalize(g){const nodes=(g.nodes||[]).map(n=>({id:String(n.id??n.node??n.name),x:+n.x,y:+n.y,label:String(n.label??n.id??'')}));const edges=(g.edges||g.links||[]).map(e=>({from:String(e.from??e.source),to:String(e.to??e.target),type:String(e.type??e.transport??'').toLowerCase()}));return {nodes,edges};}
-async function boot(){const [img,graph]=await Promise.all([tryImages(), fetch('assets/sy_nodes_edges.json').then(r=>r.json())]); state.img=img; state.graph=normalize(graph); centerAndFit(); fit(); draw(); refreshTickets();}
-boot().catch(console.error);
+async function boot(){
+  try{
+    console.log('[SY] Loading assets…');
+    let img=null;
+    try{ img = await tryImages(); console.log('[SY] board image OK'); } catch(e){ console.warn('[SY] board image failed, using blank', e); img=null; }
+    const resp = await fetch('assets/sy_nodes_edges.json', {cache:'no-store'});
+    if(!resp.ok){ throw new Error('JSON fetch failed: '+resp.status); }
+    const graph = await resp.json();
+    console.log('[SY] JSON OK, nodes:', (graph.nodes||[]).length, 'edges:', (graph.edges||graph.links||[]).length);
+    state.img=img; state.graph=normalize(graph);
+    centerAndFit(); fit(); draw(); refreshTickets();
+  }catch(err){
+    console.error('[SY] boot error', err);
+    addLog('Chyba při načítání mapy/dat. Zkontroluj cestu k /assets/.','err');
+  }
+}
+window.addEventListener('DOMContentLoaded', boot);
 
 // viewport
 function fit(){const r=canvas.getBoundingClientRect(),d=state.dpi;const w=Math.max(1,Math.floor(r.width*d)),h=Math.max(1,Math.floor(r.height*d)); if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;} draw();}
 window.addEventListener('resize',fit);
+window.addEventListener('orientationchange', fit);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) fit(); });
 function screenToBoard(sx,sy){const r=canvas.getBoundingClientRect();return {x:(sx-r.left-state.panX)/state.scale,y:(sy-r.top-state.panY)/state.scale};}
 function centerAndFit(){const r=canvas.getBoundingClientRect(); if(!state.img){state.scale=1;state.panX=r.width/2;state.panY=r.height/2;return;} const sx=r.width/state.img.width, sy=r.height/state.img.height; state.scale=Math.min(sx,sy)*0.98; state.panX=(r.width-state.img.width*state.scale)/2; state.panY=(r.height-state.img.height*state.scale)/2;}
 
