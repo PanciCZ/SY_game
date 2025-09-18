@@ -10,3 +10,5 @@ main{display:grid;grid-template-columns:1fr 320px;height:calc(100% - 50px)}
 #panel button:hover{background:#222c3a}
 #log{max-height:60vh;overflow:auto;display:grid;gap:6px}
 #log .entry{padding:6px 8px;background:#11161d;border:1px solid #1f2a36;border-radius:8px}
+
+#errBanner{box-shadow:0 2px 6px rgba(0,0,0,.35)}

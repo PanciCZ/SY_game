@@ -7,14 +7,17 @@ const state={
 const canvas=document.getElementById('board'); const ctx=canvas.getContext('2d',{alpha:false}); canvas.style.touchAction='none';
 
 function loadImage(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src;});}
-async function tryImages(){try{return await loadImage('assets/board.webp');}catch{return loadImage('assets/board.png');}}
+async function tryImages(){ try{ return await loadImage(abs('board.webp')); } catch { return loadImage(abs('board.png')); } }
 function normalize(g){const nodes=(g.nodes||[]).map(n=>({id:String(n.id??n.node??n.name),x:+n.x,y:+n.y,label:String(n.label??n.id??'')}));const edges=(g.edges||g.links||[]).map(e=>({from:String(e.from??e.source),to:String(e.to??e.target),type:String(e.type??e.transport??'').toLowerCase()}));return {nodes,edges};}
 async function boot(){
+  const ASSETS = new URL('./assets/', location.href);
+  function abs(p){ return new URL(p, ASSETS).toString(); }
+
   try{
     console.log('[SY] Loading assets…');
     let img=null;
     try{ img = await tryImages(); console.log('[SY] board image OK'); } catch(e){ console.warn('[SY] board image failed, using blank', e); img=null; }
-    const resp = await fetch('assets/sy_nodes_edges.json', {cache:'no-store'});
+    const resp = await fetch(abs('sy_nodes_edges.json'), {cache:'no-store'});
     if(!resp.ok){ throw new Error('JSON fetch failed: '+resp.status); }
     const graph = await resp.json();
     console.log('[SY] JSON OK, nodes:', (graph.nodes||[]).length, 'edges:', (graph.edges||graph.links||[]).length);
@@ -22,7 +25,7 @@ async function boot(){
     centerAndFit(); fit(); draw(); refreshTickets();
   }catch(err){
     console.error('[SY] boot error', err);
-    addLog('Chyba při načítání mapy/dat. Zkontroluj cestu k /assets/.','err');
+    addLog('Chyba při načítání mapy/dat. Zkontroluj cestu k /assets/.','err'); showErrorBanner('Nepodařilo se načíst assets – ověř, že /assets/ je ve stejné složce jako index.html');
   }
 }
 window.addEventListener('DOMContentLoaded', boot);
@@ -95,6 +98,13 @@ let ACCRUED={black:0,double:0};
 
 function refreshTickets(){document.getElementById('mrxTicketsLeft').textContent=`Zbývá: Black ${RULES.black}, Double ${RULES.double}`;}
 function addLog(m,c=''){const d=document.createElement('div');d.className='entry '+c; d.innerHTML=m; document.getElementById('log').prepend(d);}
+function showErrorBanner(text){
+  let b=document.getElementById('errBanner');
+  if(!b){ b=document.createElement('div'); b.id='errBanner'; document.body.appendChild(b); }
+  b.textContent=text;
+  b.style.position='fixed'; b.style.left='0'; b.style.right='0'; b.style.top='0';
+  b.style.background='#b91c1c'; b.style.color='white'; b.style.padding='10px 12px'; b.style.zIndex='9999'; b.style.fontWeight='700';
+}
 function edgeExistsTyped(a,b,ptype){a=String(a);b=String(b);return state.graph.edges.some(e=>{const f=String(e.from),t=String(e.to),tt=String(e.type).toLowerCase();return (((f===a&&t===b)||(f===b&&t===a)) && tt===ptype);});}
 function edgeExistsAny(a,b){return edgeExistsTyped(a,b,'taxi')||edgeExistsTyped(a,b,'bus')||edgeExistsTyped(a,b,'metro')||edgeExistsTyped(a,b,'lod');}
 
