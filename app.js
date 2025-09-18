@@ -1,4 +1,4 @@
-// Mr X viewer v12 – big labels, offset lines, arrows w/ outlines, undo & gains logged, improved logs
+// Mr X viewer v8 – big labels, all moves, offset by transport, arrows, highlight last
 const state={
   img:null, graph:{nodes:[],edges:[]},
   scale:1, panX:0, panY:0, dpi:window.devicePixelRatio||1,
@@ -7,34 +7,14 @@ const state={
 const canvas=document.getElementById('board'); const ctx=canvas.getContext('2d',{alpha:false}); canvas.style.touchAction='none';
 
 function loadImage(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src;});}
-async function tryImages(){ try{ return await loadImage(abs('board.webp')); } catch { return loadImage(abs('board.png')); } }
+async function tryImages(){try{return await loadImage('assets/board.webp');}catch{return loadImage('assets/board.png');}}
 function normalize(g){const nodes=(g.nodes||[]).map(n=>({id:String(n.id??n.node??n.name),x:+n.x,y:+n.y,label:String(n.label??n.id??'')}));const edges=(g.edges||g.links||[]).map(e=>({from:String(e.from??e.source),to:String(e.to??e.target),type:String(e.type??e.transport??'').toLowerCase()}));return {nodes,edges};}
-async function boot(){
-  const ASSETS = new URL('./assets/', location.href);
-  function abs(p){ return new URL(p, ASSETS).toString(); }
-
-  try{
-    console.log('[SY] Loading assets…');
-    let img=null;
-    try{ img = await tryImages(); console.log('[SY] board image OK'); } catch(e){ console.warn('[SY] board image failed, using blank', e); img=null; }
-    const resp = await fetch(abs('sy_nodes_edges.json'), {cache:'no-store'});
-    if(!resp.ok){ throw new Error('JSON fetch failed: '+resp.status); }
-    const graph = await resp.json();
-    console.log('[SY] JSON OK, nodes:', (graph.nodes||[]).length, 'edges:', (graph.edges||graph.links||[]).length);
-    state.img=img; state.graph=normalize(graph);
-    centerAndFit(); fit(); draw(); refreshTickets();
-  }catch(err){
-    console.error('[SY] boot error', err);
-    addLog('Chyba při načítání mapy/dat. Zkontroluj cestu k /assets/.','err'); showErrorBanner('Nepodařilo se načíst assets – ověř, že /assets/ je ve stejné složce jako index.html');
-  }
-}
-window.addEventListener('DOMContentLoaded', boot);
+async function boot(){const [img,graph]=await Promise.all([tryImages(), fetch('assets/sy_nodes_edges.json').then(r=>r.json())]); state.img=img; state.graph=normalize(graph); centerAndFit(); fit(); draw(); refreshTickets();}
+boot().catch(console.error);
 
 // viewport
 function fit(){const r=canvas.getBoundingClientRect(),d=state.dpi;const w=Math.max(1,Math.floor(r.width*d)),h=Math.max(1,Math.floor(r.height*d)); if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;} draw();}
 window.addEventListener('resize',fit);
-window.addEventListener('orientationchange', fit);
-document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) fit(); });
 function screenToBoard(sx,sy){const r=canvas.getBoundingClientRect();return {x:(sx-r.left-state.panX)/state.scale,y:(sy-r.top-state.panY)/state.scale};}
 function centerAndFit(){const r=canvas.getBoundingClientRect(); if(!state.img){state.scale=1;state.panX=r.width/2;state.panY=r.height/2;return;} const sx=r.width/state.img.width, sy=r.height/state.img.height; state.scale=Math.min(sx,sy)*0.98; state.panX=(r.width-state.img.width*state.scale)/2; state.panY=(r.height-state.img.height*state.scale)/2;}
 
@@ -70,43 +50,40 @@ function focusOn(n){const r=canvas.getBoundingClientRect(); const s=Math.min(5,M
 
 // drawing helpers
 const colFor = (t)=> t==='taxi' ? '#FFD54A' : t==='bus' ? '#4CD964' : t==='metro' ? '#FF3B30' : t==='lod' ? '#4DA3FF' : t==='black' ? '#000000' : '#9CA3AF';
-const offsetFor = (t)=> t==='taxi' ? -4 : t==='metro' ? 4 : 0; // bus/lod center
+const offsetFor = (t)=> t==='taxi' ? -4 : t==='metro' ? 4 : 0; // bus center
 const isDashed = (t)=> t==='black';
-function drawArrow(x, y, angle, size, outlineColor=null){
-  if(outlineColor){
-    ctx.fillStyle=outlineColor;
-    ctx.save(); ctx.translate(x,y); ctx.rotate(angle);
-    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-size, size*0.6); ctx.lineTo(-size,-size*0.6);
-    ctx.closePath(); ctx.fill(); ctx.restore();
-  }
+function drawArrow(x, y, angle, size){
   ctx.save(); ctx.translate(x,y); ctx.rotate(angle);
-  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-size*0.9, size*0.54); ctx.lineTo(-size*0.9,-size*0.54);
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-size, size*0.6); ctx.lineTo(-size,-size*0.6);
   ctx.closePath(); ctx.fill(); ctx.restore();
 }
 function segPoints(a,b,type){
   const dx=b.x-a.x, dy=b.y-a.y, len=Math.hypot(dx,dy)||1;
   const px=-dy/len, py=dx/len; const off=offsetFor(type);
-  return {ax:a.x+px*off, ay=a.y+py*off, bx=b.x+px*off, by=b.y+py*off};
+  return {ax:a.x+px*off, ay:a.y+py*off, bx:b.x+px*off, by:b.y+py*off};
 }
 
 // game + rules
 const RULES={reveal:[3,8,13,18,24], black:5, double:2};
 const game={moves:[]};
-const commitStack=[]; // {moves:[{ticket,to}...], usedBlack, usedDouble, gainedBlack, gainedDouble}
-// Track manual gains since last commit
-let ACCRUED={black:0,double:0};
+// commitStack stores turns for undo: {moves:[{ticket,to}, ...], usedBlack:number, usedDouble:number}
+const commitStack=[];
+// Track manual gains (+1 buttons) until next commit
+let ACCRUED = {black:0, double:0};
+
 
 function refreshTickets(){document.getElementById('mrxTicketsLeft').textContent=`Zbývá: Black ${RULES.black}, Double ${RULES.double}`;}
 function addLog(m,c=''){const d=document.createElement('div');d.className='entry '+c; d.innerHTML=m; document.getElementById('log').prepend(d);}
-function showErrorBanner(text){
-  let b=document.getElementById('errBanner');
-  if(!b){ b=document.createElement('div'); b.id='errBanner'; document.body.appendChild(b); }
-  b.textContent=text;
-  b.style.position='fixed'; b.style.left='0'; b.style.right='0'; b.style.top='0';
-  b.style.background='#b91c1c'; b.style.color='white'; b.style.padding='10px 12px'; b.style.zIndex='9999'; b.style.fontWeight='700';
+function edgeExistsTyped(a,b,ptype){
+  a=String(a); b=String(b);
+  return state.graph.edges.some(e=>{
+    const f=String(e.from),t=String(e.to),tt=String(e.type).toLowerCase();
+    return (((f===a&&t===b)||(f===b&&t===a)) && tt===ptype);
+  });
 }
-function edgeExistsTyped(a,b,ptype){a=String(a);b=String(b);return state.graph.edges.some(e=>{const f=String(e.from),t=String(e.to),tt=String(e.type).toLowerCase();return (((f===a&&t===b)||(f===b&&t===a)) && tt===ptype);});}
-function edgeExistsAny(a,b){return edgeExistsTyped(a,b,'taxi')||edgeExistsTyped(a,b,'bus')||edgeExistsTyped(a,b,'metro')||edgeExistsTyped(a,b,'lod');}
+function edgeExistsAny(a,b){
+  return edgeExistsTyped(a,b,'taxi')||edgeExistsTyped(a,b,'bus')||edgeExistsTyped(a,b,'metro')||edgeExistsTyped(a,b,'lod');
+}
 
 document.getElementById('mrxCommit').onclick=()=>{
   const ticket=document.getElementById('mrxTicket').value;
@@ -115,65 +92,51 @@ document.getElementById('mrxCommit').onclick=()=>{
   if(Number.isNaN(to)){addLog('Zadej cílový uzel.','err');return;}
   const last=game.moves.length?game.moves[game.moves.length-1].to:null;
 
-  // Validate
+  // Validate edges
   if(last){
-    if(ticket==='black'){ if(!edgeExistsAny(last,to)){ addLog(`Black: musí existovat spojení (taxi/bus/metro/lod) mezi ${last} → ${to}.`,'err'); return; } }
-    else { if(!edgeExistsTyped(last,to,ticket)){ addLog(`Neplatná hrana ${last} → ${to} pro ${ticket}.`,'err'); return; } }
+    if(ticket==='black'){
+      if(!edgeExistsAny(last,to)){ addLog(`Black: musí existovat spojení (taxi/bus/metro/lod) mezi ${last} → ${to}.`,'err'); return; }
+    } else {
+      if(!edgeExistsTyped(last,to,ticket)){ addLog(`Neplatná hrana ${last} → ${to} pro ${ticket}.`,'err'); return; }
+    }
   }
 
-  // Consume
+  // Consume tickets and build this turn
   let usedBlack=0, usedDouble=0;
-  if(ticket==='black'){ if(RULES.black<=0){ addLog('Došly Black.','err'); return; } RULES.black--; usedBlack++; }
+  if(ticket==='black'){
+    if(RULES.black<=0){ addLog('Došly Black.','err'); return; }
+    RULES.black--; usedBlack++;
+  }
   const movesTurn=[{ticket,to}];
 
   if(dbl){
     if(RULES.double<=0){ addLog('Došly Double.','err'); return; }
-    RULES.double--; usedDouble=1;
+    usedDouble=1; RULES.double--;
     const to2 = parseInt(prompt('Druhý cíl:')||'',10);
     const t2  = (prompt('Druhá jízdenka (taxi/bus/metro/black):','taxi')||'').toLowerCase();
     if(!to2 || !['taxi','bus','metro','black'].includes(t2)){ addLog('Neplatný druhý tah.','err'); return; }
+    // validate second
     const from2 = to;
-    if(t2==='black'){ if(!edgeExistsAny(from2,to2)){ addLog('Black: Druhý tah nemá platné spojení.','err'); return; } if(RULES.black<=0){ addLog('Došly Black pro 2. tah.','err'); return; } RULES.black--; usedBlack++; }
-    else { if(!edgeExistsTyped(from2,to2,t2)){ addLog('Neplatná druhá hrana.','err'); return; } }
+    if(t2==='black'){
+      if(!edgeExistsAny(from2,to2)){ addLog('Black: Druhý tah nemá platné spojení.','err'); return; }
+      if(RULES.black<=0){ addLog('Došly Black pro 2. tah.','err'); return; }
+      RULES.black--; usedBlack++;
+    } else {
+      if(!edgeExistsTyped(from2,to2,t2)){ addLog('Neplatná druhá hrana.','err'); return; }
+    }
     movesTurn.push({ticket:t2,to:to2});
   }
 
-  // Commit
+  // Commit turn
   for(const m of movesTurn) game.moves.push(m);
   commitStack.push({moves:movesTurn, usedBlack, usedDouble, gainedBlack:ACCRUED.black, gainedDouble:ACCRUED.double});
   ACCRUED.black=0; ACCRUED.double=0;
 
-  // Log this turn
-  if(movesTurn.length===2){
-    const first=movesTurn[0], second=movesTurn[1];
-    addLog(`Mr X double: ${first.ticket} → ${first.to}, ${second.ticket} → ${second.to}`,'ok');
-  } else {
-    addLog(`Mr X ${ticket} → ${to}`,'ok');
-  }
-
   const c=game.moves.length;
   if(RULES.reveal.includes(c)){ addLog(`Odhalení po ${c}. tahu: <strong>${game.moves[c-1].to}</strong>`,'ok'); }
+  else { addLog(`Mr X ${ticket}${dbl?' (+ druhý tah)':''} → ?`,'ok'); }
 
   refreshTickets(); draw();
-};
-
-// Extra controls (+1 and Undo)
-document.getElementById('btnAddBlack').onclick=()=>{ RULES.black++; ACCRUED.black++; const cur = game.moves.length?game.moves[game.moves.length-1].to:'?'; refreshTickets(); addLog(`+1 Black přidán na pozici ${cur}`,'ok'); };
-document.getElementById('btnAddDouble').onclick=()=>{ RULES.double++; ACCRUED.double++; const cur = game.moves.length?game.moves[game.moves.length-1].to:'?'; refreshTickets(); addLog(`+1 Double přidán na pozici ${cur}`,'ok'); };
-document.getElementById('btnUndo').onclick=()=>{
-  if(!commitStack.length){ addLog('Není co vracet.','err'); return; }
-  const lastTurn = commitStack.pop();
-  // remove moves
-  for(let i=0;i<lastTurn.moves.length;i++){ game.moves.pop(); }
-  // refund spent
-  RULES.black += lastTurn.usedBlack||0;
-  RULES.double += lastTurn.usedDouble||0;
-  // remove any tickets gained during that turn
-  RULES.black -= lastTurn.gainedBlack||0;
-  RULES.double -= lastTurn.gainedDouble||0;
-  if(RULES.black<0) RULES.black=0; if(RULES.double<0) RULES.double=0;
-  refreshTickets(); draw();
-  addLog('Poslední tah vrácen (včetně získaných jízdenek).','ok');
 };
 
 function traversedEdgeKey(a,b){a=String(a);b=String(b);return a<b?`${a}-${b}`:`${b}-${a}`;}
@@ -184,40 +147,44 @@ function draw(){
   if(state.img) ctx.drawImage(state.img,0,0);
 
   // Build ordered segments
-  const segs=[]; for(let i=1;i<game.moves.length;i++){ const prev=game.moves[i-1], cur=game.moves[i]; segs.push({from:String(prev.to), to:String(cur.to), type:String(cur.ticket).toLowerCase(), idx:i}); }
+  const segs=[];
+  for(let i=1;i<game.moves.length;i++){ const prev=game.moves[i-1], cur=game.moves[i]; segs.push({from:String(prev.to), to:String(cur.to), type:String(cur.ticket).toLowerCase(), idx:i}); }
 
-  // Draw all but last with outlines
+  // Draw all but last
   for(const s of segs.slice(0,-1)){
-    const a=state.graph.nodes.find(n=>n.id===s.from), b=state.graph.nodes.find(n=>n.id===s.to); if(!a||!b) continue;
-    const {ax,ay,bx,by}=segPoints(a,b,s.type); const col=colFor(s.type);
-    // outline (white for black segments, else black)
+    const a=state.graph.nodes.find(n=>n.id===s.from), b=state.graph.nodes.find(n=>n.id===s.to);
+    if(!a||!b) continue;
+    const {ax,ay,bx,by}=segPoints(a,b,s.type);
+    const col=colFor(s.type);
+    /* outline */
     ctx.lineCap='round'; ctx.setLineDash([]);
-    ctx.strokeStyle = (s.type==='black') ? '#FFFFFF' : '#000000'; ctx.lineWidth = 7;
+    ctx.strokeStyle = (s.type==='black') ? '#FFFFFF' : '#000000';
+    ctx.lineWidth = 7; // 5px color + ~1px outline each side
     ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
-    // colored line
+    /* color */
     ctx.strokeStyle=col; ctx.lineWidth=5; ctx.setLineDash(isDashed(s.type)?[12,8]:[]);
     ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke(); ctx.setLineDash([]);
-    // arrow with outline then color
-    const t=0.6, mx=ax+(bx-ax)*t, my=ay+(by-ay)*t;
-    drawArrow(mx,my,Math.atan2(by-ay,bx-ax),26,(s.type==='black')?'#FFFFFF':'#000000');
-    ctx.fillStyle=col; drawArrow(mx,my,Math.atan2(by-ay,bx-ax),24,null);
+    // arrow
+    const t=0.6, mx=ax+(bx-ax)*t, my=ay+(by-ay)*t; ctx.fillStyle=(s.type==='black')?'#FFFFFF':'#000000'; drawArrow(mx,my,Math.atan2(by-ay,bx-ax),26);
+    ctx.fillStyle=col; drawArrow(mx,my,Math.atan2(by-ay,bx-ax),24);
   }
-
-  // Last highlighted with glow and thicker outline
+  // Last highlighted
   if(segs.length){
-    const s=segs[segs.length-1]; const a=state.graph.nodes.find(n=>n.id===s.from), b=state.graph.nodes.find(n=>n.id===s.to);
+    const s=segs[segs.length-1];
+    const a=state.graph.nodes.find(n=>n.id===s.from), b=state.graph.nodes.find(n=>n.id===s.to);
     if(a&&b){
-      const {ax,ay,bx,by}=segPoints(a,b,s.type); const col=colFor(s.type);
-      // outline
-      ctx.lineCap='round'; ctx.setLineDash([]); ctx.strokeStyle=(s.type==='black')?'#FFFFFF':'#000000'; ctx.lineWidth=9;
+      const {ax,ay,bx,by}=segPoints(a,b,s.type);
+      const col=colFor(s.type);
+      /* outline */
+      ctx.lineCap='round'; ctx.setLineDash([]);
+      ctx.strokeStyle = (s.type==='black') ? '#FFFFFF' : '#000000';
+      ctx.lineWidth = 9;
       ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
-      // color + glow
+      /* color */
       ctx.strokeStyle=col; ctx.lineWidth=7; ctx.shadowColor=col; ctx.shadowBlur=8; ctx.setLineDash(isDashed(s.type)?[12,8]:[]);
       ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke(); ctx.setLineDash([]); ctx.shadowBlur=0;
-      // arrow
-      const t=0.6, mx=ax+(bx-ax)*t, my=ay+(by-ay)*t;
-      drawArrow(mx,my,Math.atan2(by-ay,bx-ax),32,(s.type==='black')?'#FFFFFF':'#000000');
-      ctx.fillStyle=col; drawArrow(mx,my,Math.atan2(by-ay,bx-ax),30,null);
+      const t=0.6, mx=ax+(bx-ax)*t, my=ay+(by-ay)*t; ctx.fillStyle=(s.type==='black')?'#FFFFFF':'#000000'; drawArrow(mx,my,Math.atan2(by-ay,bx-ax),32);
+      ctx.fillStyle=col; drawArrow(mx,my,Math.atan2(by-ay,bx-ax),30);
     }
   }
 
@@ -242,3 +209,23 @@ function draw(){
   }
   ctx.restore();
 }
+
+// Extra controls
+document.getElementById('btnAddBlack').onclick=()=>{ RULES.black++; ACCRUED.black++; refreshTickets(); addLog('+1 Black přidán','ok'); };
+document.getElementById('btnAddDouble').onclick=()=>{ RULES.double++; ACCRUED.double++; refreshTickets(); addLog('+1 Double přidán','ok'); };
+document.getElementById('btnUndo').onclick=()=>{
+  if(!commitStack.length){ addLog('Není co vracet.','err'); return; }
+  const lastTurn = commitStack.pop();
+  // remove moves
+  for(let i=0;i<lastTurn.moves.length;i++){ game.moves.pop(); }
+  // refund tickets spent
+  RULES.black += lastTurn.usedBlack||0;
+  RULES.double += lastTurn.usedDouble||0;
+  // remove tickets gained during that turn
+  RULES.black -= lastTurn.gainedBlack||0;
+  RULES.double -= lastTurn.gainedDouble||0;
+  if(RULES.black<0) RULES.black=0; if(RULES.double<0) RULES.double=0;
+  refreshTickets();
+  draw();
+  addLog('Poslední tah vrácen (včetně získaných jízdenek).','ok');
+};
