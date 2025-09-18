@@ -11,7 +11,7 @@
 <body>
   <header class="topbar">
     <nav class="tabs">
-      <button class="tab active" data-tab="map">Mapa</button>
+      <button class="tab" data-tab="map">Mapa</button>
       <button class="tab" data-tab="mrx">Mr. X</button>
       <button class="tab" data-tab="players">Ostatní hráči</button>
     </nav>
@@ -42,7 +42,9 @@
           <label><input id="mrxDouble" type="checkbox"> Dvojitý tah</label>
           <button id="mrxCommit">Zapsat</button>
         </div>
-        <div class="tickets"><strong id="mrxTicketsLeft">Zbývá: Black 5, Double 2</strong></div>
+        <div class="tickets">
+          <strong id="mrxTicketsLeft">Zbývá: Black 5, Double 2</strong>
+        </div>
         <div class="row">
           <button id="btnAddBlack">+1 Black</button>
           <button id="btnAddDouble">+1 Double</button>
@@ -77,6 +79,6 @@
   </main>
 
   <footer class="footer"><span>Tip: 1 prst = posun, 2 prsty = zoom, dvojklik = přiblížení na uzel.</span></footer>
-  <script src="app.js?v=18f"></script>
+  <script src="app.js?v=18"></script>
 </body>
 </html>

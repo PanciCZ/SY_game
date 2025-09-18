@@ -5,9 +5,8 @@ body,html{margin:0;height:100%;background:#0b0f14;color:#eaeff4;font-family:syst
 .tabs{display:flex;gap:8px;align-items:center}
 .tab.active{background:#2a3545;border-color:#3a465a}
 
-.view{display:none;height:calc(100% - 50px - env(safe-area-inset-top));overflow:auto}
-.view.active{display:block}
-#view-map.view.active{display:grid}
+.view{display:none;height:calc(100% - 50px)}
+.view.active{display:grid}
 #view-map{grid-template-columns:1fr 320px}
 #board{width:100%;height:100%;display:block;touch-action:none}
 #panel{background:#0f141b;padding:10px;border-left:1px solid #1f2a36;overflow:auto}
@@ -18,6 +17,7 @@ body,html{margin:0;height:100%;background:#0b0f14;color:#eaeff4;font-family:syst
 #log .entry{padding:6px 8px;background:#11161d;border:1px solid #1f2a36;border-radius:8px}
 
 /* Mr.X cards: 3 columns */
+#view-mrx{display:block;overflow:auto}
 .mrx-log{padding:12px}
 .mrx-cards{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .mrx-card{display:flex;align-items:center;justify-content:space-between;background:#11161d;border:1px solid #1f2a36;border-radius:12px;padding:10px 12px;min-height:56px}
@@ -30,6 +30,7 @@ body,html{margin:0;height:100%;background:#0b0f14;color:#eaeff4;font-family:syst
 .mrx-reveal{font-weight:800;border:2px solid #e5e7eb;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center}
 
 /* Players */
+#view-players{display:block;overflow:auto}
 .players{padding:12px}
 .players-table{overflow:auto;border:1px solid #1f2a36;border-radius:10px}
 .players-table table{width:100%;border-collapse:collapse}
@@ -37,6 +38,3 @@ body,html{margin:0;height:100%;background:#0b0f14;color:#eaeff4;font-family:syst
 .players-table thead th{position:sticky;top:0;background:#0f141b}
 .players-table input{width:64px;background:#0b0f14;color:#eaeff4;border:1px solid #273141;border-radius:6px;padding:6px;text-align:center}
 .players-table td.invalid{outline:2px solid #ef4444}
-
-/* Safe-area: push topbar below statusbar */
-.topbar{padding-top: calc(10px + env(safe-area-inset-top));}
