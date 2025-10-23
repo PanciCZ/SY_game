@@ -68,3 +68,25 @@ body,html{margin:0;height:100%;background:#0b0f14;color:#eaeff4;font-family:syst
 #panel input, .players-table input {
   font-size: 16px;
 }
+
+/* === In-app numpad (iPad) === */
+#numpad {
+  display: none;
+  margin: 8px 0 12px;
+}
+#numpad.active { display: block; }
+#numpad .numpad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+#numpad button {
+  padding: 14px 0;
+  border-radius: 10px;
+  border: 1px solid #273141;
+  background: #1b2430;
+  color: #eaeff4;
+  font-size: 20px;
+  font-weight: 700;
+}
+#numpad button:active { transform: scale(0.98); }
