@@ -32,7 +32,7 @@ function loadImage(src){return new Promise((res,rej)=>{const i=new Image();i.onl
 async function tryImages(){ try{ return await loadImage('assets/board.webp'); } catch { return loadImage('assets/board.jpeg'); } }
 function normalize(g){const n=(g.nodes||[]).map(x=>({id:String(x.id??x.node??x.name),x:+x.x,y:+x.y,label:String(x.label??x.id??'')}));const e=(g.edges||g.links||[]).map(x=>({from:String(x.from??x.source),to:String(x.to??x.target),type:String(x.type??x.transport??'').toLowerCase()}));return{nodes:n,edges:e};}
 async function boot(){const [img,graph]=await Promise.all([tryImages(), fetch('assets/sy_nodes_edges.json',{cache:'no-store'}).then(r=>r.json())]); state.img=img; state.graph=normalize(graph); centerAndFit(); fit(); refreshTickets(); draw(); switchTab('map');}
-window.addEventListener('DOMContentLoaded', ()=>{ document.getElementById('mrxDest').classList.add('num-only'); boot().catch(console.error); });
+window.addEventListener('DOMContentLoaded', ()=>boot().catch(console.error));
 
 function fit(){const r=canvas.getBoundingClientRect(),d=state.dpi;const w=Math.max(1,Math.floor(r.width*d)),h=Math.max(1,Math.floor(r.height*d)); if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;} draw();}
 window.addEventListener('resize',fit);
@@ -267,8 +267,8 @@ function renderPlayersTable(){
     const th=document.createElement('th'); th.textContent=step; tr.appendChild(th);
     for(const id of DETECTIVE_IDS){
             const td=document.createElement('td');
-      \1
-      inp.classList.add('num-only');
+      const inp=document.createElement('input'); 
+      inp.type='tel';
       inp.setAttribute('inputmode','numeric');
       inp.setAttribute('pattern','[0-9]*');
       inp.autocomplete = 'off';
@@ -300,64 +300,3 @@ function renderPlayersTable(){
   }
   table.appendChild(tbody); root.innerHTML=''; root.appendChild(table);
 }
-
-
-// === iPad numpad ===
-(function(){
-  const isIpad = /iPad|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document;
-  const pad = document.getElementById('numpad');
-  if(!pad) return;
-  let target = null;
-
-  function openPadFor(el){
-    if(!isIpad) return; // only iPad uses in-app pad
-    target = el;
-    // prevent native keyboard
-    el.readOnly = true;
-    pad.classList.add('active');
-    pad.setAttribute('aria-hidden','false');
-  }
-  function closePad(){
-    if(target){ target.readOnly = false; target.blur(); }
-    target = null;
-    pad.classList.remove('active');
-    pad.setAttribute('aria-hidden','true');
-  }
-
-  // Delegate focus for all .num-only inputs (dynamic too)
-  document.addEventListener('focusin', (e)=>{
-    const el = e.target;
-    if(!(el instanceof HTMLInputElement)) return;
-    if(!el.classList.contains('num-only')) return;
-    openPadFor(el);
-  });
-
-  // Handle clicks
-  pad.addEventListener('click', (e)=>{
-    const b = e.target.closest('button'); if(!b || !target) return;
-    const key = b.getAttribute('data-key');
-    const action = b.getAttribute('data-action');
-    if(key){
-      // append digit
-      const maxLen = 3; // typical node numbers; adjust if needed
-      if((target.value||'').length < maxLen){
-        target.value = (target.value||'') + key;
-        target.dispatchEvent(new Event('change', {bubbles:true}));
-      }
-    } else if(action === 'back'){
-      target.value = (target.value||'').slice(0,-1);
-      target.dispatchEvent(new Event('change', {bubbles:true}));
-    } else if(action === 'done'){
-      closePad();
-    }
-  });
-
-  // Close pad when switching tabs or clicking outside panel
-  document.addEventListener('click', (e)=>{
-    if(!target) return;
-    const panel = document.getElementById('panel');
-    if(panel && !panel.contains(e.target) && !pad.contains(e.target)){
-      closePad();
-    }
-  });
-})();
