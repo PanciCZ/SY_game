@@ -38,3 +38,15 @@ body,html{margin:0;height:100%;background:#0b0f14;color:#eaeff4;font-family:syst
 .players-table thead th{position:sticky;top:0;background:#0f141b}
 .players-table input{width:64px;background:#0b0f14;color:#eaeff4;border:1px solid #273141;border-radius:6px;padding:6px;text-align:center}
 .players-table td.invalid{outline:2px solid #ef4444}
+
+/* === Scrollovací log panel === */
+#logContainer {
+  max-height: calc(100vh - 300px); /* uprav dle potřeby */
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+/* === Skrytí tahů Mr. X při vypnuté cestě === */
+.hidden-mrx #log .entry.mrx:not(.reveal) {
+  display: none;
+}

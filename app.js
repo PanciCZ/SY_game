@@ -17,7 +17,11 @@ function switchTab(to){
   if(to==='mrx') renderMrXCards();
   if(to==='players') renderPlayersTable();
 }
-document.getElementById('toggleXPaths').addEventListener('click',()=>{SHOW_X_PATHS=!SHOW_X_PATHS; draw();});
+document.getElementById('toggleXPaths').addEventListener('click',()=>{
+  SHOW_X_PATHS = !SHOW_X_PATHS;
+  document.body.classList.toggle('hidden-mrx', !SHOW_X_PATHS);
+  draw();
+});
 document.getElementById('toggleDetPaths').addEventListener('click',()=>{SHOW_DET_PATHS=!SHOW_DET_PATHS; draw();});
 
 // ---------- Canvas / Map ----------
@@ -76,7 +80,20 @@ const commitStack=[]; // {moves:[{ticket,to}], usedBlack, usedDouble, gainedBlac
 let ACCRUED={black:0,double:0};
 
 function refreshTickets(){const box=document.getElementById('mrxTicketsLeft'); if(box) box.textContent=`Zbývá: Black ${RULES.black}, Double ${RULES.double}`;}
-function addLog(m,c=''){const d=document.createElement('div');d.className='entry '+c; d.innerHTML=m; document.getElementById('log').prepend(d);}
+function addLog(m,c=''){
+  const d=document.createElement('div');
+  d.className='entry '+c;
+  // označ záznamy Mr.X pro filtrování
+  if(c === 'ok' && m.startsWith('Mr X')) d.classList.add('mrx'); // with non-breaking space variant
+  if(c === 'ok' && m.startsWith('Mr X')) d.classList.add('mrx'); // fallback plain space
+  if(m.includes('Odhalení')) d.classList.add('reveal');
+  d.innerHTML=m;
+  document.getElementById('log').prepend(d);
+
+  // autoscroll na začátek (nejnovější nahoře)
+  const scroller = document.getElementById('logContainer');
+  if (scroller) scroller.scrollTop = 0;
+}
 function edgeExistsTyped(a,b,ptype){a=String(a);b=String(b);return state.graph.edges.some(e=>{const f=String(e.from),t=String(e.to),tt=String(e.type).toLowerCase();return (((f===a&&t===b)||(f===b&&t===a)) && tt===ptype);});}
 function edgeExistsAny(a,b){return edgeExistsTyped(a,b,'taxi')||edgeExistsTyped(a,b,'bus')||edgeExistsTyped(a,b,'metro')||edgeExistsTyped(a,b,'lod');}
 
