@@ -50,3 +50,21 @@ body,html{margin:0;height:100%;background:#0b0f14;color:#eaeff4;font-family:syst
 .hidden-mrx #log .entry.mrx:not(.reveal) {
   display: none;
 }
+
+/* === iPad fixes: rigid layout + momentum scroll === */
+#panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* nechť scrolluje jen log */
+}
+#logContainer {
+  flex: 1 1 auto;
+  min-height: 0;              /* důležité pro flex scroll oblast */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* iOS plynulé rolování */
+  scroll-behavior: smooth;
+}
+/* zajistí, že pole nejsou <16px, aby iOS nezvětšoval zoom při focuse */
+#panel input, .players-table input {
+  font-size: 16px;
+}

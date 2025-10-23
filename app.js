@@ -267,7 +267,12 @@ function renderPlayersTable(){
     const th=document.createElement('th'); th.textContent=step; tr.appendChild(th);
     for(const id of DETECTIVE_IDS){
       const td=document.createElement('td');
-      const inp=document.createElement('input'); inp.type='number';
+      \1inp.type='tel';
+      inp.setAttribute('inputmode','numeric');
+      inp.setAttribute('pattern','[0-9]*');
+      inp.autocomplete = 'off';
+      inp.enterKeyHint = 'done';
+      inp.step = '1';
       inp.setAttribute('inputmode','numeric');
       inp.setAttribute('pattern','[0-9]*');
       inp.enterKeyHint = 'done';
