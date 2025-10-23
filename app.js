@@ -267,7 +267,11 @@ function renderPlayersTable(){
     const th=document.createElement('th'); th.textContent=step; tr.appendChild(th);
     for(const id of DETECTIVE_IDS){
       const td=document.createElement('td');
-      const inp=document.createElement('input'); inp.type='number'; inp.min='1'; inp.placeholder='?';
+      const inp=document.createElement('input'); inp.type='number';
+      inp.setAttribute('inputmode','numeric');
+      inp.setAttribute('pattern','[0-9]*');
+      inp.enterKeyHint = 'done';
+      inp.step = '1'; inp.min='1'; inp.placeholder='?';
       const cur=playersState[id][step]??''; if(cur!==null) inp.value=cur;
       inp.addEventListener('change',()=>{
         const v=parseInt(inp.value||'',10);
